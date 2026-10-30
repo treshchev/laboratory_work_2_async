@@ -18,14 +18,31 @@ import asyncio
 from timer import print_time
 
 
-def work(n: int) -> None:
-    ...
+async def work(n: int) -> None:
+    print(f"start {n}")
+    await asyncio.sleep(1)
+    print(f"done {n}")
 
 
-def main() -> None:
-    ...
+# --- 2а: await в цикле, всё ещё последовательно (~10 с) --------------------
+# async def main() -> None:
+#     for n in range(1, 11):
+#         await work(n)
+
+
+# --- 2б: все задачи ждут одновременно через gather (~1 с) -------------------
+async def main() -> None:
+    coroutines = [work(n) for n in range(1, 11)]
+    await asyncio.gather(*coroutines)
+
+
+# --- дополнительно: то же самое через create_task ---------------------------
+# async def main() -> None:
+#     tasks = [asyncio.create_task(work(n)) for n in range(1, 11)]
+#     for task in tasks:
+#         await task
 
 
 if __name__ == "__main__":
     with print_time():
-        main()
+        asyncio.run(main())
