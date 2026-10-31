@@ -1,14 +1,10 @@
-"""Шаг 3б. Асинхронный сервер.
-
-Те же клиенты, но запросы обрабатываются конкурентно:
-пока один ждёт базу, event loop принимает остальных.
-"""
+"""Шаг 4. Блокировка event loop (дополнительное задание)."""
 
 import asyncio
+import time
 
 from timer import log, print_time
 
-# (клиент, сколько секунд база отвечает на его запрос)
 CLIENTS = [
     ("alice", 0.5),
     ("bob", 5.0),
@@ -17,18 +13,40 @@ CLIENTS = [
     ("eve", 0.5),
 ]
 
+# Тяжелая синхронная функция, которая грузит процессор (CPU)
+def heavy_compute(duration: float) -> None:
+    start = time.time()
+    while time.time() - start < duration:
+        pass  # Крутим пустой цикл, нагружая CPU.
 
-async def handle_request(client: str, duration: float) -> None:
+# ПЛОХО: вызов этой функции заблокирует весь event loop
+async def handle_request_blocking(client: str, duration: float) -> None:
     log(f"{client}: запрос принят")
-    await asyncio.sleep(duration)
+    if client == "bob":
+        heavy_compute(duration)  # Блокирует всё!
+    else:
+        await asyncio.sleep(duration)
     log(f"{client}: ответ отправлен")
 
+# ХОРОШО: выносим тяжелую функцию в отдельный поток
+async def handle_request_fixed(client: str, duration: float) -> None:
+    log(f"{client}: запрос принят")
+    if client == "bob":
+        await asyncio.to_thread(heavy_compute, duration)
+    else:
+        await asyncio.sleep(duration)
+    log(f"{client}: ответ отправлен")
 
 async def main() -> None:
-    coroutines = [handle_request(client, duration) for client, duration in CLIENTS]
-    await asyncio.gather(*coroutines)
+    print("--- 4а: ПЛОХО (Блокировка event loop) ---")
+    with print_time():
+        tasks = [handle_request_blocking(c, d) for c, d in CLIENTS]
+        await asyncio.gather(*tasks)
 
+    print("\n--- 4б: ХОРОШО (Вынос в отдельный поток) ---")
+    with print_time():
+        tasks = [handle_request_fixed(c, d) for c, d in CLIENTS]
+        await asyncio.gather(*tasks)
 
 if __name__ == "__main__":
-    with print_time():
-        asyncio.run(main())
+    asyncio.run(main())
