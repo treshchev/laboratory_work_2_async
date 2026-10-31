@@ -39,12 +39,13 @@ CLIENTS = [
 
 
 def handle_request(client: str, duration: float) -> None:
-    ...
-
+    log(f"{client}: запрос принят")
+    time.sleep(duration)  # Блокируем весь сервер на duration секунд
+    log(f"{client}: ответ отправлен")
 
 def main() -> None:
-    ...
-
+    for client, duration in CLIENTS:
+        handle_request(client, duration)
 
 if __name__ == "__main__":
     with print_time():
